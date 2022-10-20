@@ -13,7 +13,7 @@ type TopicTag struct {
 	Slug string
 }
 
-type QuestionInfo struct {
+type LeetQuestionInfo struct {
 	AcRate             float32
 	Difficulty         string
 	FreqBar            interface{}
@@ -28,13 +28,22 @@ type QuestionInfo struct {
 	HasVideoSolution   bool
 }
 
-type ProblemsetQuestionList struct {
-	Total     int32
-	Questions []QuestionInfo
+type QuestionInfo struct {
+	AcRate     float32
+	Difficulty string
+	Status     string
+	Title      string
+	TitleSlug  string
+	TopicTags  []TopicTag
 }
 
-func GetProblemsetQuestionList(categorySlug string, skip int, limit int, filters struct{}) (ProblemsetQuestionList, error) {
-	list := ProblemsetQuestionList{}
+type ProblemsetQuestionList struct {
+	Total     int32
+	Questions []LeetQuestionInfo
+}
+
+func GetQuestionInfoList(categorySlug string, skip int, limit int, filters struct{}) ([]QuestionInfo, error) {
+	var list []QuestionInfo
 
 	req := graphql.NewRequest(`
 	query problemsetQuestionList($categorySlug: String, $limit: Int, $skip: Int, $filters: QuestionListFilterInput) {
@@ -72,10 +81,8 @@ func GetProblemsetQuestionList(categorySlug string, skip int, limit int, filters
 	req.Var("limit", limit)
 	req.Var("filters", filters)
 
-	ctx := context.Background()
-
 	var data map[string]interface{}
-	if err := GetClient().Run(ctx, req, &data); err != nil {
+	if err := GetClient().Run(context.Background(), req, &data); err != nil {
 		return list, err
 	}
 
@@ -84,9 +91,267 @@ func GetProblemsetQuestionList(categorySlug string, skip int, limit int, filters
 		return list, err
 	}
 
-	if err := json.Unmarshal(jsonBody, &list); err != nil {
+	ll := ProblemsetQuestionList{}
+	if err := json.Unmarshal(jsonBody, &ll); err != nil {
 		return list, err
 	}
 
+	for _, lqi := range ll.Questions {
+		list = append(list, QuestionInfo{
+			AcRate:     lqi.AcRate,
+			Difficulty: lqi.Difficulty,
+			Status:     lqi.Status,
+			Title:      lqi.Title,
+			TitleSlug:  lqi.TitleSlug,
+			TopicTags:  lqi.TopicTags,
+		})
+	}
+
 	return list, nil
+}
+
+type LeetQuestion struct {
+	QuestionId         string
+	QuestionFrontendId string
+	BoundTopicId       string
+	Title              string
+	TitleSlug          string
+	Content            string
+	TranslatedTitle    string
+	TranslatedContent  string
+	IsPaidOnly         bool
+	CanSeeQuestion     bool
+	Difficulty         string
+	Likes              int32
+	Dislikes           int32
+	IsLiked            bool
+	SimilarQuestions   string
+	// struct {
+	// 	Title           string
+	// 	TitleSlug       string
+	// 	Difficulty      string
+	// 	TranslatedTitle string
+	// }
+	ExampleTestcases string
+	CategoryTitle    string
+	// contributors {
+	// 	username
+	// 	profileUrl
+	// 	avatarUrl
+	// 	__typename
+	// }
+	TopicTags []TopicTag
+	// companyTagStats
+	CodeSnippets []struct {
+		Lang     string
+		LangSlug string
+		Code     string
+	}
+	Stats    string
+	Hints    []string
+	Solution struct {
+		Id           string
+		CanSeeDetail bool
+		// PaidOnly bool
+		// HasVideoSolution bool
+		// PaidOnlyVideo bool
+	}
+	Status         string
+	SampleTestCase string
+	MetaData       string
+	// JudgerAvailable bool
+	// JudgeType string
+	// MysqlSchemas
+	// EnableRunCode
+	// EnableTestMode
+	// EnableDebugger
+	// EnvInfo
+	// LibraryUrl string
+	// AdminUrl string
+	// ChallengeQuestion struct {
+	// 	Id int64
+	// 	Date string
+	// 	IncompleteChallengeCount
+	// 	StreakCount
+	// }
+}
+
+type Question struct {
+	QuestionId       string
+	Title            string
+	TitleSlug        string
+	Content          string
+	Difficulty       string
+	Likes            int32
+	Dislikes         int32
+	IsLiked          bool
+	SimilarQuestions []struct {
+		Title      string
+		TitleSlug  string
+		Difficulty string
+	}
+	ExampleTestcases string
+	CategoryTitle    string
+	TopicTags        []TopicTag
+	CodeSnippets     []struct {
+		Lang     string
+		LangSlug string
+		Code     string
+	}
+	Stats struct {
+		TotalAccepted      string
+		TotalSubmission    string
+		TotalAcceptedRaw   int
+		TotalSubmissionRaw int
+		AcRate             string
+	}
+	Hints    []string
+	Solution struct {
+		Id           string
+		CanSeeDetail bool
+	}
+	Status         string
+	SampleTestCase string
+	// MetaData       string
+}
+
+func GetFullQuestion(titleSlug string) (Question, error) {
+	question := Question{}
+
+	req := graphql.NewRequest(`
+	query questionData($titleSlug: String!) {
+		question(titleSlug: $titleSlug) {
+			questionId
+			questionFrontendId
+			boundTopicId
+			title
+			titleSlug
+			content
+			translatedTitle
+			translatedContent
+			isPaidOnly
+			canSeeQuestion
+			difficulty
+			likes
+			dislikes
+			isLiked
+			similarQuestions
+			exampleTestcases
+			categoryTitle
+			contributors {
+				username
+				profileUrl
+				avatarUrl
+				__typename
+			}
+			topicTags {
+				name
+				slug
+				translatedName
+				__typename
+			}
+			companyTagStats
+			codeSnippets {
+				lang
+				langSlug
+				code
+				__typename
+			}
+			stats
+			hints
+			solution {
+				id
+				canSeeDetail
+				paidOnly
+				hasVideoSolution
+				paidOnlyVideo
+				__typename
+			}
+			status
+			sampleTestCase
+			metaData
+			judgerAvailable
+			judgeType
+			mysqlSchemas
+			enableRunCode
+			enableTestMode
+			enableDebugger
+			envInfo
+			libraryUrl
+			adminUrl
+			challengeQuestion {
+				id
+				date
+				incompleteChallengeCount
+				streakCount
+				type
+				__typename
+			}
+			__typename
+		}
+	}	
+`)
+
+	req.Var("titleSlug", titleSlug)
+
+	var data map[string]interface{}
+	if err := GetClient().Run(context.Background(), req, &data); err != nil {
+		return question, err
+	}
+
+	jsonBody, err := json.Marshal(data["question"])
+	if err != nil {
+		return question, err
+	}
+
+	lq := LeetQuestion{}
+
+	if err := json.Unmarshal(jsonBody, &lq); err != nil {
+		return question, err
+	}
+
+	var similarQuestions []struct {
+		Title      string
+		TitleSlug  string
+		Difficulty string
+	}
+
+	if err := json.Unmarshal([]byte(lq.SimilarQuestions), &similarQuestions); err != nil {
+		return question, err
+	}
+
+	var stats struct {
+		TotalAccepted      string
+		TotalSubmission    string
+		TotalAcceptedRaw   int
+		TotalSubmissionRaw int
+		AcRate             string
+	}
+
+	if err := json.Unmarshal([]byte(lq.Stats), &stats); err != nil {
+		return question, err
+	}
+
+	question = Question{
+		QuestionId:       lq.QuestionId,
+		Title:            lq.Title,
+		TitleSlug:        lq.TitleSlug,
+		Content:          lq.Content,
+		Difficulty:       lq.Difficulty,
+		Likes:            lq.Likes,
+		Dislikes:         lq.Dislikes,
+		IsLiked:          lq.IsLiked,
+		SimilarQuestions: similarQuestions,
+		ExampleTestcases: lq.ExampleTestcases,
+		CategoryTitle:    lq.CategoryTitle,
+		TopicTags:        lq.TopicTags,
+		CodeSnippets:     lq.CodeSnippets,
+		Stats:            stats,
+		Hints:            lq.Hints,
+		Solution:         lq.Solution,
+		Status:           lq.Status,
+		SampleTestCase:   lq.SampleTestCase,
+	}
+
+	return question, nil
 }

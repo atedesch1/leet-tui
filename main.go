@@ -8,7 +8,12 @@ import (
 
 func main() {
 	api.Init()
-	list, _ := api.GetProblemsetQuestionList("", 0, 50, struct{}{})
+	list, _ := api.GetQuestionInfoList("", 0, 50, struct{}{})
+	question, err := api.GetFullQuestion(list[0].TitleSlug)
+	if err != nil {
+		fmt.Println(err)
+	}
 
-	fmt.Println(list.Questions[1])
+	fmt.Println(list[0].TitleSlug)
+	fmt.Println(question.Stats)
 }
