@@ -14,15 +14,13 @@ type questionListModel struct {
 	skip              int
 	limit             int
 	categorySlug      string
-
-	selectedQuestion api.QuestionInfo
 }
 
 func newQuestionListModel() *questionListModel {
 	return &questionListModel{
 		cursor:            0,
 		totalNumQuestions: 0,
-		questions:         make([]api.QuestionInfo, 0),
+		questions:         []api.QuestionInfo{},
 		skip:              0,
 		limit:             10,
 		categorySlug:      "",
@@ -40,7 +38,7 @@ type SelectedQuestionMsg struct {
 
 func (m *questionListModel) selectQuestionCmd() tea.Msg {
 	return SelectedQuestionMsg{
-		question: m.selectedQuestion,
+		question: m.questions[m.skip+m.cursor],
 	}
 }
 
@@ -68,6 +66,9 @@ func (m *questionListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "right", "h":
+			if m.skip+2*m.limit > m.totalNumQuestions {
+				break
+			}
 			m.skip += m.limit
 			if len(m.questions) < m.skip+m.limit {
 				return m, m.getProblemsetQuestionList
@@ -79,7 +80,6 @@ func (m *questionListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "enter", " ":
-			m.selectedQuestion = m.questions[m.skip+m.cursor]
 			return m, m.selectQuestionCmd
 		}
 
@@ -102,7 +102,7 @@ func (m *questionListModel) View() string {
 		s += fmt.Sprintf("%s %s\n", cursor, choice.Title)
 	}
 
-	s += fmt.Sprintf("\n\nPage %d/%d", m.skip/m.limit, m.totalNumQuestions/m.limit)
+	s += fmt.Sprintf("\n\nPage %d/%d", m.skip/m.limit+1, m.totalNumQuestions/m.limit)
 
 	return s
 }
