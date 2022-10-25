@@ -10,28 +10,30 @@ import (
 type QuestionList view
 
 type QuestionListModel struct {
-	cursor       int
-	questions    []api.QuestionInfo
-	skip         int
-	limit        int
-	categorySlug string
+	cursor            int
+	totalNumQuestions int
+	questions         []api.QuestionInfo
+	skip              int
+	limit             int
+	categorySlug      string
 
 	selectedQuestion api.QuestionInfo
 }
 
 func newQuestionListModel() *QuestionListModel {
 	return &QuestionListModel{
-		cursor:       0,
-		questions:    make([]api.QuestionInfo, 0),
-		skip:         0,
-		limit:        10,
-		categorySlug: "",
+		cursor:            0,
+		totalNumQuestions: 0,
+		questions:         make([]api.QuestionInfo, 0),
+		skip:              0,
+		limit:             10,
+		categorySlug:      "",
 	}
 }
 
-func (m *QuestionListModel) getQuestionInfoList() tea.Msg {
-	questions, _ := api.GetQuestionInfoList(m.categorySlug, m.skip, m.limit)
-	return questions
+func (m *QuestionListModel) getProblemsetQuestionList() tea.Msg {
+	problemsetQuestionList, _ := api.GetProblemsetQuestionList(m.categorySlug, m.skip, m.limit)
+	return problemsetQuestionList
 }
 
 type SelectedQuestionMsg struct {
@@ -45,14 +47,15 @@ func (m *QuestionListModel) selectQuestionCmd() tea.Msg {
 }
 
 func (m *QuestionListModel) Init() tea.Cmd {
-	return m.getQuestionInfoList
+	return m.getProblemsetQuestionList
 }
 
 func (m *QuestionListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
-	case []api.QuestionInfo:
-		m.questions = msg
+	case api.ProblemsetQuestionList:
+		m.totalNumQuestions = msg.Total
+		m.questions = append(m.questions, msg.Questions...)
 
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -66,8 +69,19 @@ func (m *QuestionListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor++
 			}
 
+		case "right", "h":
+			m.skip += m.limit
+			if len(m.questions) < m.skip+m.limit {
+				return m, m.getProblemsetQuestionList
+			}
+
+		case "left", "l":
+			if m.skip >= 10 {
+				m.skip -= m.limit
+			}
+
 		case "enter", " ":
-			m.selectedQuestion = m.questions[m.cursor]
+			m.selectedQuestion = m.questions[m.skip+m.cursor]
 			return m, m.selectQuestionCmd
 		}
 
@@ -76,14 +90,21 @@ func (m *QuestionListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *QuestionListModel) View() string {
+	if len(m.questions) < m.skip+m.limit {
+		return "Loading...\n\n"
+	}
+
 	s := "Choose the question!\n\n"
 
-	for i, choice := range m.questions {
+	for i, choice := range m.questions[m.skip : m.skip+m.limit] {
 		cursor := " "
 		if m.cursor == i {
 			cursor = ">"
 		}
 		s += fmt.Sprintf("%s %s\n", cursor, choice.Title)
 	}
+
+	s += fmt.Sprintf("\n\nPage %d/%d", m.skip/m.limit, m.totalNumQuestions/m.limit)
+
 	return s
 }

@@ -37,13 +37,18 @@ type QuestionInfo struct {
 	TopicTags  []TopicTag
 }
 
-type ProblemsetQuestionList struct {
-	Total     int32
+type LeetProblemsetQuestionList struct {
+	Total     int
 	Questions []LeetQuestionInfo
 }
 
-func GetQuestionInfoList(categorySlug string, skip int, limit int) ([]QuestionInfo, error) {
-	var list []QuestionInfo
+type ProblemsetQuestionList struct {
+	Total     int
+	Questions []QuestionInfo
+}
+
+func GetProblemsetQuestionList(categorySlug string, skip int, limit int) (ProblemsetQuestionList, error) {
+	var qlist ProblemsetQuestionList
 
 	req := graphql.NewRequest(`
 	query problemsetQuestionList($categorySlug: String, $limit: Int, $skip: Int, $filters: QuestionListFilterInput) {
@@ -83,21 +88,22 @@ func GetQuestionInfoList(categorySlug string, skip int, limit int) ([]QuestionIn
 
 	var data map[string]interface{}
 	if err := getClient().Run(context.Background(), req, &data); err != nil {
-		return list, err
+		return qlist, err
 	}
 
 	jsonBody, err := json.Marshal(data["problemsetQuestionList"])
 	if err != nil {
-		return list, err
+		return qlist, err
 	}
 
-	ll := ProblemsetQuestionList{}
+	ll := LeetProblemsetQuestionList{}
 	if err := json.Unmarshal(jsonBody, &ll); err != nil {
-		return list, err
+		return qlist, err
 	}
 
+	qlist.Total = ll.Total
 	for _, lqi := range ll.Questions {
-		list = append(list, QuestionInfo{
+		qlist.Questions = append(qlist.Questions, QuestionInfo{
 			AcRate:     lqi.AcRate,
 			Difficulty: lqi.Difficulty,
 			Status:     lqi.Status,
@@ -107,7 +113,7 @@ func GetQuestionInfoList(categorySlug string, skip int, limit int) ([]QuestionIn
 		})
 	}
 
-	return list, nil
+	return qlist, nil
 }
 
 type LeetQuestion struct {
@@ -122,8 +128,8 @@ type LeetQuestion struct {
 	IsPaidOnly         bool
 	CanSeeQuestion     bool
 	Difficulty         string
-	Likes              int32
-	Dislikes           int32
+	Likes              int
+	Dislikes           int
 	IsLiked            bool
 	SimilarQuestions   string
 	// struct {
@@ -182,8 +188,8 @@ type Question struct {
 	TitleSlug        string
 	Content          string
 	Difficulty       string
-	Likes            int32
-	Dislikes         int32
+	Likes            int
+	Dislikes         int
 	IsLiked          bool
 	SimilarQuestions []struct {
 		Title      string
