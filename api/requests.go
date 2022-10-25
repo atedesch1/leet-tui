@@ -42,7 +42,7 @@ type ProblemsetQuestionList struct {
 	Questions []LeetQuestionInfo
 }
 
-func GetQuestionInfoList(categorySlug string, skip int, limit int, filters struct{}) ([]QuestionInfo, error) {
+func GetQuestionInfoList(categorySlug string, skip int, limit int) ([]QuestionInfo, error) {
 	var list []QuestionInfo
 
 	req := graphql.NewRequest(`
@@ -79,10 +79,10 @@ func GetQuestionInfoList(categorySlug string, skip int, limit int, filters struc
 	req.Var("categorySlug", categorySlug)
 	req.Var("skip", skip)
 	req.Var("limit", limit)
-	req.Var("filters", filters)
+	req.Var("filters", struct{}{})
 
 	var data map[string]interface{}
-	if err := GetClient().Run(context.Background(), req, &data); err != nil {
+	if err := getClient().Run(context.Background(), req, &data); err != nil {
 		return list, err
 	}
 
@@ -295,7 +295,7 @@ func GetFullQuestion(titleSlug string) (Question, error) {
 	req.Var("titleSlug", titleSlug)
 
 	var data map[string]interface{}
-	if err := GetClient().Run(context.Background(), req, &data); err != nil {
+	if err := getClient().Run(context.Background(), req, &data); err != nil {
 		return question, err
 	}
 

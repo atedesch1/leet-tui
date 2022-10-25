@@ -13,6 +13,6 @@ func Init() {
 	// ctx = context.Background()
 }
 
-func GetClient() *graphql.Client {
+func getClient() *graphql.Client {
 	return client
 }
