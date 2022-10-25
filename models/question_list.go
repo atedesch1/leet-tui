@@ -7,9 +7,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-type QuestionList view
-
-type QuestionListModel struct {
+type questionListModel struct {
 	cursor            int
 	totalNumQuestions int
 	questions         []api.QuestionInfo
@@ -20,8 +18,8 @@ type QuestionListModel struct {
 	selectedQuestion api.QuestionInfo
 }
 
-func newQuestionListModel() *QuestionListModel {
-	return &QuestionListModel{
+func newQuestionListModel() *questionListModel {
+	return &questionListModel{
 		cursor:            0,
 		totalNumQuestions: 0,
 		questions:         make([]api.QuestionInfo, 0),
@@ -31,7 +29,7 @@ func newQuestionListModel() *QuestionListModel {
 	}
 }
 
-func (m *QuestionListModel) getProblemsetQuestionList() tea.Msg {
+func (m *questionListModel) getProblemsetQuestionList() tea.Msg {
 	problemsetQuestionList, _ := api.GetProblemsetQuestionList(m.categorySlug, m.skip, m.limit)
 	return problemsetQuestionList
 }
@@ -40,17 +38,17 @@ type SelectedQuestionMsg struct {
 	question api.QuestionInfo
 }
 
-func (m *QuestionListModel) selectQuestionCmd() tea.Msg {
+func (m *questionListModel) selectQuestionCmd() tea.Msg {
 	return SelectedQuestionMsg{
 		question: m.selectedQuestion,
 	}
 }
 
-func (m *QuestionListModel) Init() tea.Cmd {
+func (m *questionListModel) Init() tea.Cmd {
 	return m.getProblemsetQuestionList
 }
 
-func (m *QuestionListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *questionListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
 	case api.ProblemsetQuestionList:
@@ -89,7 +87,7 @@ func (m *QuestionListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *QuestionListModel) View() string {
+func (m *questionListModel) View() string {
 	if len(m.questions) < m.skip+m.limit {
 		return "Loading...\n\n"
 	}
