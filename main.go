@@ -8,7 +8,11 @@ import (
 
 func main() {
 	api.Init()
-	p := tea.NewProgram(models.NewMainModel())
+	p := tea.NewProgram(
+		models.NewMainModel(),
+		tea.WithAltScreen(),
+		tea.WithMouseCellMotion(),
+	)
 	if err := p.Start(); err != nil {
 		panic(err)
 	}
