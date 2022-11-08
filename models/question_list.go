@@ -8,11 +8,12 @@ import (
 )
 
 type questionListModel struct {
-	totalNumQuestions int
-	questions         []api.QuestionInfo
-	skip              int
-	limit             int
-	categorySlug      string
+	totalNumQuestions    int
+	questions            []api.QuestionInfo
+	pageToQuestionsIndex map[int]int
+	page                 int
+	limit                int
+	categorySlug         string
 
 	cursor  int
 	loading bool
@@ -20,11 +21,12 @@ type questionListModel struct {
 
 func newQuestionListModel() *questionListModel {
 	return &questionListModel{
-		totalNumQuestions: 0,
-		questions:         []api.QuestionInfo{},
-		skip:              0,
-		limit:             10,
-		categorySlug:      "",
+		totalNumQuestions:    0,
+		questions:            []api.QuestionInfo{},
+		pageToQuestionsIndex: make(map[int]int),
+		page:                 0,
+		limit:                10,
+		categorySlug:         "",
 
 		cursor:  0,
 		loading: true,
@@ -36,28 +38,30 @@ type problemsetQuestionListResponseMsg struct {
 }
 
 func (m *questionListModel) getProblemsetQuestionListCmd() tea.Msg {
-	problemsetQuestionList, _ := api.GetProblemsetQuestionList(m.categorySlug, m.skip, m.limit)
+	problemsetQuestionList, _ := api.GetProblemsetQuestionList(m.categorySlug, m.page*m.limit, m.limit)
 	return problemsetQuestionListResponseMsg{
 		questionList: problemsetQuestionList,
 	}
 }
 
 func (m *questionListModel) goToPreviousPage() tea.Cmd {
-	if m.skip < m.limit {
-		return nil
+	if m.page > 0 {
+		m.page--
 	}
 
-	m.skip -= m.limit
+	if _, ok := m.pageToQuestionsIndex[m.page]; !ok {
+		m.loading = true
+		return m.getProblemsetQuestionListCmd
+	}
 	return nil
 }
 
 func (m *questionListModel) goToNextPage() tea.Cmd {
-	if m.skip+2*m.limit > m.totalNumQuestions {
-		return nil
+	if (1+m.page)*m.limit <= m.totalNumQuestions {
+		m.page++
 	}
 
-	m.skip += m.limit
-	if len(m.questions) < m.skip+m.limit {
+	if _, ok := m.pageToQuestionsIndex[m.page]; !ok {
 		m.loading = true
 		return m.getProblemsetQuestionListCmd
 	}
@@ -70,7 +74,7 @@ type SelectedQuestionMsg struct {
 
 func (m *questionListModel) selectQuestionCmd() tea.Msg {
 	return SelectedQuestionMsg{
-		question: m.questions[m.skip+m.cursor],
+		question: m.questions[m.pageToQuestionsIndex[m.page]*m.limit+m.cursor],
 	}
 }
 
@@ -85,7 +89,10 @@ func (m *questionListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case problemsetQuestionListResponseMsg:
 		m.loading = false
-		m.totalNumQuestions = msg.questionList.Total
+		if m.totalNumQuestions == 0 {
+			m.totalNumQuestions = msg.questionList.Total
+		}
+		m.pageToQuestionsIndex[m.page] = len(m.questions)
 		m.questions = append(m.questions, msg.questionList.Questions...)
 
 	case tea.KeyMsg:
@@ -93,7 +100,7 @@ func (m *questionListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "up", "k":
 			if m.cursor > 0 {
 				m.cursor--
-			} else if m.cursor == 0 && m.skip >= m.limit {
+			} else if m.cursor == 0 && m.page > 0 {
 				cmd = m.goToPreviousPage()
 				m.cursor = m.limit - 1
 			}
@@ -101,7 +108,7 @@ func (m *questionListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "down", "j":
 			if m.cursor < m.limit-1 {
 				m.cursor++
-			} else if m.cursor == m.limit-1 && m.skip+2*m.limit <= m.totalNumQuestions {
+			} else if m.cursor == m.limit-1 && (1+m.page)*m.limit <= m.totalNumQuestions {
 				cmd = m.goToNextPage()
 				m.cursor = 0
 			}
@@ -127,8 +134,8 @@ func (m *questionListModel) View() string {
 		s += "  Loading..."
 		return s
 	}
-
-	for i, choice := range m.questions[m.skip : m.skip+m.limit] {
+	index := m.pageToQuestionsIndex[m.page]
+	for i, choice := range m.questions[index : index+m.limit] {
 		cursor := " "
 		if m.cursor == i {
 			cursor = ">"
@@ -136,7 +143,7 @@ func (m *questionListModel) View() string {
 		s += fmt.Sprintf("%s %s\n", cursor, choice.Title)
 	}
 
-	s += fmt.Sprintf("\nPage %d/%d", m.skip/m.limit+1, m.totalNumQuestions/m.limit)
+	s += fmt.Sprintf("\nPage %d/%d", m.page+1, m.totalNumQuestions/m.limit)
 
 	return s
 }
