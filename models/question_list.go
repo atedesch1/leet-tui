@@ -24,7 +24,7 @@ func newQuestionListModel() *questionListModel {
 		totalNumQuestions:    0,
 		questions:            []api.QuestionInfo{},
 		pageToQuestionsIndex: make(map[int]int),
-		page:                 245,
+		page:                 0,
 		limit:                10,
 		categorySlug:         "",
 
