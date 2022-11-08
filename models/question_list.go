@@ -24,7 +24,7 @@ func newQuestionListModel() *questionListModel {
 		totalNumQuestions:    0,
 		questions:            []api.QuestionInfo{},
 		pageToQuestionsIndex: make(map[int]int),
-		page:                 0,
+		page:                 245,
 		limit:                10,
 		categorySlug:         "",
 
@@ -61,10 +61,15 @@ func (m *questionListModel) goToNextPage() tea.Cmd {
 		m.page++
 	}
 
+	if m.page*m.limit+m.cursor >= m.totalNumQuestions {
+		m.cursor = m.totalNumQuestions - m.page*m.limit - 1
+	}
+
 	if _, ok := m.pageToQuestionsIndex[m.page]; !ok {
 		m.loading = true
 		return m.getProblemsetQuestionListCmd
 	}
+
 	return nil
 }
 
@@ -74,7 +79,7 @@ type SelectedQuestionMsg struct {
 
 func (m *questionListModel) selectQuestionCmd() tea.Msg {
 	return SelectedQuestionMsg{
-		question: m.questions[m.pageToQuestionsIndex[m.page]*m.limit+m.cursor],
+		question: m.questions[m.pageToQuestionsIndex[m.page]+m.cursor],
 	}
 }
 
@@ -106,7 +111,7 @@ func (m *questionListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "down", "j":
-			if m.cursor < m.limit-1 {
+			if m.cursor+1 < m.limit && m.page*m.limit+m.cursor+1 < m.totalNumQuestions {
 				m.cursor++
 			} else if m.cursor == m.limit-1 && (1+m.page)*m.limit <= m.totalNumQuestions {
 				cmd = m.goToNextPage()
@@ -132,18 +137,26 @@ func (m *questionListModel) View() string {
 
 	if m.loading {
 		s += "  Loading..."
-		return s
-	}
-	index := m.pageToQuestionsIndex[m.page]
-	for i, choice := range m.questions[index : index+m.limit] {
-		cursor := " "
-		if m.cursor == i {
-			cursor = ">"
+		for i := 0; i < m.limit; i++ {
+			s += "\n"
 		}
-		s += fmt.Sprintf("%s %s\n", cursor, choice.Title)
+	} else {
+		index := m.pageToQuestionsIndex[m.page]
+		for i := 0; i < m.limit; i++ {
+			cursor := " "
+			if m.cursor == i {
+				cursor = ">"
+			}
+
+			question := ""
+			if m.page*m.limit+i < m.totalNumQuestions {
+				question = m.questions[index+i].Title
+			}
+			s += fmt.Sprintf("%s %s\n", cursor, question)
+		}
 	}
 
-	s += fmt.Sprintf("\nPage %d/%d", m.page+1, m.totalNumQuestions/m.limit)
+	s += fmt.Sprintf("\nPage %d/%d", m.page+1, m.totalNumQuestions/m.limit+1)
 
 	return s
 }
