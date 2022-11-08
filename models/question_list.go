@@ -113,10 +113,10 @@ func (m *questionListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor = 0
 			}
 
-		case "right", "h":
+		case "right", "l":
 			cmd = m.goToNextPage()
 
-		case "left", "l":
+		case "left", "h":
 			cmd = m.goToPreviousPage()
 
 		case "enter", " ":
